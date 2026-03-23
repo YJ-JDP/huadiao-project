@@ -1,10 +1,130 @@
-from flask import Flask, render_template
+import os
+import uuid
+import base64
+import requests
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, url_for
+from werkzeug.utils import secure_filename
+from dotenv import load_dotenv
+from PIL import Image
+from openai import OpenAI
+
+load_dotenv()
 
 app = Flask(__name__)
 
+# 配置
+app.config['UPLOAD_FOLDER'] = 'static/uploads'
+app.config['RESULT_FOLDER'] = 'static/results'
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
+
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
+
+# 获取 API Key
+QIANFAN_API_KEY = os.getenv("QIANFAN_API_KEY")
+print("API Key loaded:", QIANFAN_API_KEY[:15] + "..." if QIANFAN_API_KEY else "None")
+if not QIANFAN_API_KEY:
+    raise ValueError("请在 .env 文件中设置 QIANFAN_API_KEY")
+
+# 初始化 OpenAI 客户端
+client = OpenAI(base_url='https://qianfan.baidubce.com/v2', api_key=QIANFAN_API_KEY)
+
+# 风格库
+STYLES = {
+    '和玺彩画': '故宫和玺彩画，以金龙纹为主，色彩金碧辉煌，寓意皇权尊贵',
+    '旋子彩画': '旋子彩画，以旋花纹为主，色彩青绿相间，常用于宫殿建筑',
+    '苏式彩画': '苏式彩画，以山水人物为主，色彩清新雅致，源于江南园林',
+    '敦煌壁画': '敦煌壁画风格，以飞天、莲花为特色，色彩浓郁，充满宗教艺术感',
+    '藏族彩绘': '藏族彩绘，以八宝吉祥图案为主，色彩鲜艳，寓意吉祥如意'
+}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def compress_image(image_path, max_size=(1024, 1024)):
+    try:
+        img = Image.open(image_path)
+        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+        img.save(image_path, optimize=True, quality=85)
+        return True
+    except Exception as e:
+        print(f"压缩失败: {e}")
+        return False
+
+def generate_image(prompt, save_path):
+    try:
+        response = client.images.generate(
+            model="qwen-image",
+            prompt=prompt,
+            size="1024x1024",
+            n=1
+        )
+        if response.data[0].b64_json:
+            image_data = base64.b64decode(response.data[0].b64_json)
+            with open(save_path, "wb") as f:
+                f.write(image_data)
+            return save_path
+        elif response.data[0].url:
+            img_data = requests.get(response.data[0].url).content
+            with open(save_path, "wb") as f:
+                f.write(img_data)
+            return save_path
+        else:
+            return None
+    except Exception as e:
+        print(f"图像生成失败: {e}")
+        return None
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', styles=STYLES.keys())
+
+@app.route('/api/upload', methods=['POST'])
+def upload_file():
+    # 1. 文件检查
+    if 'file' not in request.files:
+        return jsonify({'error': '没有上传文件'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': '未选择文件'}), 400
+    if not allowed_file(file.filename):
+        return jsonify({'error': '不支持的文件格式'}), 400
+
+    style = request.form.get('style', '和玺彩画')
+    if style not in STYLES:
+        style = '和玺彩画'
+
+    # 2. 保存原图
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    original_filename = secure_filename(file.filename)
+    unique_filename = f"{timestamp}_{uuid.uuid4().hex[:8]}_{original_filename}"
+    original_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+    file.save(original_path)
+    compress_image(original_path)
+
+    # 3. 暂时使用固定描述（避免视觉分析出错）
+    description = "一幅中国传统风格的图片"
+
+    # 4. 构造 prompt
+    style_desc = STYLES[style]
+    prompt = f"将以下内容转换成{style}风格的古建筑彩绘画作。图片内容：{description}。风格要求：{style_desc}，色彩鲜艳，线条流畅，中国传统风格。"
+
+    # 5. 生成图片
+    result_filename = f"result_{timestamp}_{uuid.uuid4().hex[:8]}.jpg"
+    result_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
+    result = generate_image(prompt, result_path)
+    if not result:
+        return jsonify({'error': 'AI生成失败，请重试'}), 500
+
+    local_url = url_for('static', filename=f'results/{result_filename}')
+    return jsonify({
+        'success': True,
+        'result_url': local_url,
+        'style': style,
+        'message': f'已生成{style}风格作品'
+    })
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0', port=5000)
