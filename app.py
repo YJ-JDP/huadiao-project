@@ -3,7 +3,7 @@ import uuid
 import base64
 import requests
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, url_for
+from flask import Flask, render_template, request, jsonify, url_for, send_from_directory
 from werkzeug.utils import secure_filename
 from dotenv import load_dotenv
 from PIL import Image
@@ -24,9 +24,13 @@ os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
 
 # 获取 API Key
 QIANFAN_API_KEY = os.getenv("QIANFAN_API_KEY")
-print("API Key loaded:", QIANFAN_API_KEY[:15] + "..." if QIANFAN_API_KEY else "None")
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+print("QIANFAN API Key loaded:", QIANFAN_API_KEY[:15] + "..." if QIANFAN_API_KEY else "None")
+print("DEEPSEEK API Key loaded:", DEEPSEEK_API_KEY[:15] + "..." if DEEPSEEK_API_KEY else "None")
 if not QIANFAN_API_KEY:
     raise ValueError("请在 .env 文件中设置 QIANFAN_API_KEY")
+if not DEEPSEEK_API_KEY:
+    raise ValueError("请在 .env 文件中设置 DEEPSEEK_API_KEY")
 
 # 初始化 OpenAI 客户端
 client = OpenAI(base_url='https://qianfan.baidubce.com/v2', api_key=QIANFAN_API_KEY)
@@ -77,9 +81,83 @@ def generate_image(prompt, save_path):
         print(f"图像生成失败: {e}")
         return None
 
+def generate_poetry(style, building):
+    try:
+        # 构建 prompt
+        prompt = f"为{building}的{style}创作一首七言绝句，要求意境优美，符合古建筑和彩绘风格的特点，格式为：\n《标题》\n第一句\n第二句\n第三句\n第四句，注意你只需要给出诗词内容，不需要注释等"
+        
+        # 调用 DeepSeek API
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}"
+        }
+        
+        data = {
+            "model": "deepseek-chat",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            "temperature": 0.7,
+            "max_tokens": 200
+        }
+        
+        response = requests.post("https://api.deepseek.com/v1/chat/completions", headers=headers, json=data)
+        response.raise_for_status()
+        
+        result = response.json()
+        poetry_content = result['choices'][0]['message']['content']
+        
+        # 解析诗词内容
+        lines = poetry_content.strip().split('\n')
+        title = lines[0].strip('《》') if lines else "无题"
+        content = '\n'.join(lines[1:]) if len(lines) > 1 else ""
+        
+        return title, content
+    except Exception as e:
+        print(f"诗词生成失败: {e}")
+        return None, str(e)
+
 @app.route('/')
 def index():
     return render_template('index.html', styles=STYLES.keys())
+
+@app.route('/poetry')
+def poetry():
+    return render_template('poetry.html')
+
+@app.route('/api/generate-poetry', methods=['POST'])
+def generate_poetry_api():
+    try:
+        data = request.get_json()
+        style = data.get('style', '和玺彩画')
+        building = data.get('building', '故宫')
+        
+        title, content = generate_poetry(style, building)
+        
+        if title and content:
+            return jsonify({
+                'success': True,
+                'title': title,
+                'content': content
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': '诗词生成失败'
+            }), 500
+    except Exception as e:
+        print(f"API 错误: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/painted_reference/<path:filename>')
+def serve_painted_reference(filename):
+    return send_from_directory('painted_reference', filename)
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():

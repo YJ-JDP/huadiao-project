@@ -773,6 +773,82 @@
         
 
         
+        /* 诗词创作板块 */
+        .poetry-section {
+            background: linear-gradient(135deg, #f9f6f0 0%, #f5f0e6 100%);
+            border: 2px solid #c97e5a;
+            border-radius: 16px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(201, 126, 90, 0.1);
+        }
+        
+        .poetry-section h3 {
+            font-size: 1.2rem;
+            color: #8a3c28;
+            margin-bottom: 10px;
+        }
+        
+        .poetry-section p {
+            font-size: 0.9rem;
+            color: #666;
+            line-height: 1.4;
+            margin-bottom: 10px;
+        }
+        
+        .poetry-section p:last-child {
+            margin-bottom: 0;
+        }
+        
+        /* 诗词创作按钮 */
+        .poetry-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+            background: linear-gradient(135deg, #c97e5a 0%, #8a3c28 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .poetry-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(201, 126, 90, 0.4);
+        }
+        
+        .poetry-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s ease;
+        }
+        
+        .poetry-btn:hover::before {
+            left: 100%;
+        }
+        
+        .poetry-btn-text {
+            position: relative;
+            z-index: 1;
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+        
+        .poetry-btn:hover .poetry-btn-text {
+            transform: scale(1.05);
+        }
+        
         /* 预览按钮 */
         .preview-btn {
             background: linear-gradient(135deg, #f9f6f0 0%, #f0e6d8 100%);
@@ -1010,6 +1086,18 @@
                 
                 <!-- 生成按钮 -->
                 <button id="generateBtn" class="generate-btn">✨ 开始创作 ✨</button>
+                
+                <!-- 诗词创作板块 -->
+                <div class="poetry-section">
+                    <h3>📝 诗词创作</h3>
+                    <p>基于所选彩绘风格和古建筑，AI为你创作符合意境的七言绝句</p>
+                    <p>选择不同的彩绘风格和古建筑，体验传统艺术与现代科技的完美融合，让每一幅作品都有属于自己的诗意诠释。</p>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="/poetry" class="btn primary poetry-btn">
+                            <span class="poetry-btn-text">🎋 开始诗词创作之旅</span>
+                        </a>
+                    </div>
+                </div>
                 
                 <!-- 消息提示 -->
                 <div id="message" class="message"></div>

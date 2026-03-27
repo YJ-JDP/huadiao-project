@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎨 画栋雕梁 · 诗词创作</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f9f6f0 0%, #f5f0e6 100%);
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 30px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-top: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 0;
+            border-bottom: 2px solid #c97e5a;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            color: #8a3c28;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            color: #666;
+        }
+        
+        .poetry-form {
+            background: linear-gradient(135deg, #f9f6f0 0%, #f5f0e6 100%);
+            border: 2px solid #c97e5a;
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 1.1rem;
+            color: #8a3c28;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #c97e5a;
+            border-radius: 8px;
+            font-size: 1rem;
+            background: white;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:hover {
+            border-color: #8a3c28;
+            box-shadow: 0 2px 8px rgba(201, 126, 90, 0.2);
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+            background: linear-gradient(135deg, #c97e5a 0%, #8a3c28 100%);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(201, 126, 90, 0.4);
+        }
+        
+        .btn:disabled {
+            background: linear-gradient(135deg, #ccc 0%, #999 100%);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result-section {
+            background: linear-gradient(135deg, #f9f6f0 0%, #f5f0e6 100%);
+            border: 2px solid #c97e5a;
+            border-radius: 16px;
+            padding: 30px;
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .result-section h3 {
+            font-size: 1.5rem;
+            color: #8a3c28;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .poetry-content {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .poetry-title {
+            font-size: 1.3rem;
+            color: #8a3c28;
+            margin-bottom: 15px;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .poetry-lines {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            text-align: center;
+            color: #333;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #c97e5a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px 0;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-container {
+            text-align: center;
+            padding: 40px;
+            display: none;
+        }
+        
+        .nav-link {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 8px 16px;
+            color: #8a3c28;
+            text-decoration: none;
+            border: 2px solid #c97e5a;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-link:hover {
+            background: linear-gradient(135deg, #f9f6f0 0%, #f0e6d8 100%);
+            box-shadow: 0 4px 12px rgba(201, 126, 90, 0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin-top: 20px;
+                margin-bottom: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .poetry-form,
+            .result-section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 诗词创作</h1>
+            <p>基于彩绘风格和古建筑，生成符合意境的七言绝句</p>
+        </div>
+        
+        <form class="poetry-form" id="poetryForm">
+            <div class="form-group">
+                <label for="style">选择彩绘风格</label>
+                <select id="style" name="style" class="form-control">
+                    <option value="和玺彩画">和玺彩画</option>
+                    <option value="旋子彩画">旋子彩画</option>
+                    <option value="苏式彩画">苏式彩画</option>
+                    <option value="敦煌壁画">敦煌壁画</option>
+                    <option value="藏族彩绘">藏族彩绘</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="building">选择古建筑</label>
+                <select id="building" name="building" class="form-control">
+                    <!-- 建筑选项将通过JavaScript动态生成 -->
+                </select>
+            </div>
+            
+            <div style="text-align: center;">
+                <button type="button" class="btn" id="generateBtn">生成诗词</button>
+            </div>
+        </form>
+        
+        <div class="loading-container" id="loadingContainer">
+            <div class="loading"></div>
+            <p>正在生成诗词，请稍候...</p>
+        </div>
+        
+        <div class="result-section" id="resultSection">
+            <h3>生成结果</h3>
+            <div class="poetry-content" id="poetryContent">
+                <!-- 诗词内容将在这里显示 -->
+            </div>
+            <div style="text-align: center; margin-top: 15px;">
+                <button class="btn" id="copyBtn" style="padding: 8px 16px; font-size: 0.9rem;">📋 复制诗词</button>
+            </div>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="/" class="nav-link">返回首页</a>
+        </div>
+    </div>
+    
+    <script>
+        // 风格对应的典型建筑映射
+        const styleBuildings = {
+            '和玺彩画': [
+                { value: '故宫', text: '故宫 - 太和殿' },
+                { value: '天坛', text: '天坛 - 祈年殿' },
+                { value: '颐和园', text: '颐和园 - 排云殿' },
+                { value: '避暑山庄', text: '避暑山庄 - 澹泊敬诚殿' }
+            ],
+            '旋子彩画': [
+                { value: '故宫', text: '故宫 - 乾清宫' },
+                { value: '颐和园', text: '颐和园 - 德和园' },
+                { value: '北海公园', text: '北海公园 - 永安寺' },
+                { value: '雍和宫', text: '雍和宫 - 法轮殿' }
+            ],
+            '苏式彩画': [
+                { value: '颐和园', text: '颐和园 - 长廊' },
+                { value: '拙政园', text: '拙政园 - 远香堂' },
+                { value: '留园', text: '留园 - 五峰仙馆' },
+                { value: '网师园', text: '网师园 - 万卷堂' }
+            ],
+            '敦煌壁画': [
+                { value: '敦煌莫高窟', text: '敦煌莫高窟' }
+            ],
+            '藏族彩绘': [
+                { value: '布达拉宫', text: '布达拉宫 - 白宫' },
+                { value: '布达拉宫', text: '布达拉宫 - 红宫' },
+                { value: '大昭寺', text: '大昭寺 - 主殿' },
+                { value: '塔尔寺', text: '塔尔寺 - 大金瓦殿' }
+            ]
+        };
+        
+        // 缓存DOM元素
+        const elements = {
+            poetryForm: document.getElementById('poetryForm'),
+            generateBtn: document.getElementById('generateBtn'),
+            loadingContainer: document.getElementById('loadingContainer'),
+            resultSection: document.getElementById('resultSection'),
+            poetryContent: document.getElementById('poetryContent'),
+            copyBtn: document.getElementById('copyBtn'),
+            style: document.getElementById('style'),
+            building: document.getElementById('building')
+        };
+        
+        // 初始化建筑选择
+        function initializeBuildings() {
+            updateBuildings(elements.style.value);
+        }
+        
+        // 根据选择的风格更新建筑列表
+        function updateBuildings(style) {
+            const buildingSelect = elements.building;
+            buildingSelect.innerHTML = '';
+            
+            if (styleBuildings[style]) {
+                styleBuildings[style].forEach(building => {
+                    const option = document.createElement('option');
+                    option.value = building.value;
+                    option.textContent = building.text;
+                    buildingSelect.appendChild(option);
+                });
+            }
+        }
+        
+        // 风格选择变化事件
+        elements.style.addEventListener('change', (e) => {
+            updateBuildings(e.target.value);
+        });
+        
+        // 初始化
+        initializeBuildings();
+        
+        // 生成按钮点击事件
+        elements.generateBtn.addEventListener('click', async () => {
+            const style = elements.style.value;
+            const building = elements.building.value;
+            
+            // 显示加载状态
+            elements.loadingContainer.style.display = 'block';
+            elements.resultSection.style.display = 'none';
+            
+            try {
+                // 调用API生成诗词
+                const response = await fetch('/api/generate-poetry', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ style, building })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // 显示结果，将换行符转换为HTML换行
+                    const formattedContent = data.content.replace(/\n/g, '<br>');
+                    elements.poetryContent.innerHTML = `
+                        <div class="poetry-title">${data.title}</div>
+                        <div class="poetry-lines">${formattedContent}</div>
+                    `;
+                    elements.resultSection.style.display = 'block';
+                } else {
+                    elements.poetryContent.innerHTML = `<p style="color: red; text-align: center;">生成失败: ${data.error}</p>`;
+                    elements.resultSection.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('错误:', error);
+                elements.poetryContent.innerHTML = `<p style="color: red; text-align: center;">API调用失败，请启动Flask服务器后重试</p>
+                <p style="text-align: center; margin-top: 10px;">启动命令: python app.py</p>`;
+                elements.resultSection.style.display = 'block';
+            } finally {
+                elements.loadingContainer.style.display = 'none';
+            }
+        });
+        
+        // 复制按钮点击事件
+        elements.copyBtn.addEventListener('click', () => {
+            const title = elements.poetryContent.querySelector('.poetry-title')?.textContent || '';
+            const lines = elements.poetryContent.querySelector('.poetry-lines')?.textContent || '';
+            const poetryText = (title ? title + '\n' : '') + lines;
+            
+            if (poetryText) {
+                // 尝试使用 Clipboard API
+                if (navigator.clipboard) {
+                    navigator.clipboard.writeText(poetryText).then(() => {
+                        showCopySuccess();
+                    }).catch(err => {
+                        console.error('Clipboard API 失败:', err);
+                        // 降级方案
+                        fallbackCopyTextToClipboard(poetryText);
+                    });
+                } else {
+                    // 降级方案
+                    fallbackCopyTextToClipboard(poetryText);
+                }
+            }
+        });
+        
+        // 显示复制成功提示
+        function showCopySuccess() {
+            const originalText = elements.copyBtn.textContent;
+            elements.copyBtn.textContent = '✅ 复制成功';
+            setTimeout(() => {
+                elements.copyBtn.textContent = originalText;
+            }, 2000);
+        }
+        
+        // 降级复制方案
+        function fallbackCopyTextToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            
+            try {
+                const successful = document.execCommand('copy');
+                if (successful) {
+                    showCopySuccess();
+                } else {
+                    elements.copyBtn.textContent = '❌ 复制失败';
+                    setTimeout(() => {
+                        elements.copyBtn.textContent = '📋 复制诗词';
+                    }, 2000);
+                }
+            } catch (err) {
+                console.error('执行命令失败:', err);
+                elements.copyBtn.textContent = '❌ 复制失败';
+                setTimeout(() => {
+                    elements.copyBtn.textContent = '📋 复制诗词';
+                }, 2000);
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        }
+    </script>
+</body>
+</html>
