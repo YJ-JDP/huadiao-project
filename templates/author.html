@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏛️ 班级长廊 · 画栋雕梁</title>
+    <title>👤 作者主页 · 画栋雕梁</title>
     <style>
         * {
             margin: 0;
@@ -58,6 +58,27 @@
             color: #666;
             max-width: 600px;
             margin: 0 auto;
+        }
+        
+        .author-info {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f9f6f0 0%, #f5f0e6 100%);
+            border-radius: 16px;
+            border: 2px solid #c97e5a;
+        }
+        
+        .author-name {
+            font-size: 1.8rem;
+            color: #8a3c28;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .author-stats {
+            font-size: 1rem;
+            color: #666;
         }
         
         .gallery-grid {
@@ -230,10 +251,19 @@
             color: #666;
         }
         
+        .nav-links {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 30px;
+        }
+        
         .nav-header {
             position: relative;
             margin-bottom: 20px;
             text-align: left;
+            display: flex;
+            gap: 10px;
         }
         
         .back-btn {
@@ -252,6 +282,10 @@
         .back-btn:hover {
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(201, 126, 90, 0.3);
+        }
+        
+        .home-btn {
+            background: linear-gradient(135deg, #8a3c28 0%, #c97e5a 100%);
         }
         
         @media (max-width: 768px) {
@@ -317,17 +351,30 @@
             margin-top: 20px;
             text-align: center;
         }
+        
+        @media (max-width: 768px) {
+            .nav-links {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="nav-header">
-            <a href="/" class="nav-link back-btn">← 返回首页</a>
+            <a href="/gallery" class="nav-link back-btn">← 返回班级长廊</a>
+            <a href="/" class="nav-link back-btn home-btn">🏠 首页</a>
         </div>
         
         <div class="header">
-            <h1>🏛️ 班级长廊</h1>
-            <p>展示同学们的彩绘作品和原创诗词，共同传承非遗文化</p>
+            <h1>👤 作者主页</h1>
+            <p>查看作者的所有彩绘作品和原创诗词</p>
+        </div>
+        
+        <div class="author-info">
+            <div class="author-name" id="authorName">加载中...</div>
+            <div class="author-stats" id="authorStats">加载中...</div>
         </div>
         
         <div id="galleryContent" class="gallery-grid">
@@ -335,22 +382,44 @@
         </div>
         
         <div id="emptyGallery" class="empty-gallery" style="display: none;">
-            <h3>🎨 长廊空空如也</h3>
-            <p>还没有同学上传作品，快来成为第一个创作者吧！</p>
+            <h3>🎨 暂无作品</h3>
+            <p>该作者还没有上传任何作品</p>
         </div>
     </div>
     
     <script>
-        // 加载画廊数据
-        async function loadGallery() {
+        // 获取URL参数中的作者名
+        function getAuthorFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('author') || decodeURIComponent(window.location.pathname.split('/').pop());
+        }
+        
+        // 加载作者作品
+        async function loadAuthorWorks() {
+            const author = getAuthorFromUrl();
+            if (!author) {
+                document.getElementById('emptyGallery').style.display = 'block';
+                document.getElementById('galleryContent').style.display = 'none';
+                return;
+            }
+            
             try {
                 const response = await fetch('/api/gallery');
-                const data = await response.json();
+                const allWorks = await response.json();
+                
+                // 筛选该作者的作品
+                const authorWorks = allWorks.filter(item => item.author === author);
                 
                 const galleryContent = document.getElementById('galleryContent');
                 const emptyGallery = document.getElementById('emptyGallery');
+                const authorName = document.getElementById('authorName');
+                const authorStats = document.getElementById('authorStats');
                 
-                if (data.length === 0) {
+                // 更新作者信息
+                authorName.textContent = author;
+                authorStats.textContent = `共创作 ${authorWorks.length} 件作品`;
+                
+                if (authorWorks.length === 0) {
                     emptyGallery.style.display = 'block';
                     galleryContent.style.display = 'none';
                 } else {
@@ -359,7 +428,7 @@
                     
                     galleryContent.innerHTML = '';
                     
-                    data.forEach(item => {
+                    authorWorks.forEach(item => {
                         const galleryItem = document.createElement('div');
                         galleryItem.className = 'gallery-item';
                         
@@ -423,7 +492,7 @@
                     });
                 }
             } catch (error) {
-                console.error('加载画廊失败:', error);
+                console.error('加载作者作品失败:', error);
                 document.getElementById('emptyGallery').style.display = 'block';
                 document.getElementById('galleryContent').style.display = 'none';
             }
@@ -470,8 +539,8 @@
             }
         }
         
-        // 页面加载时加载画廊
-        window.addEventListener('DOMContentLoaded', loadGallery);
+        // 页面加载时加载作者作品
+        window.addEventListener('DOMContentLoaded', loadAuthorWorks);
         
         // 图片预览功能
         const modal = document.createElement('div');

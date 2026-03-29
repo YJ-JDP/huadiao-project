@@ -243,8 +243,9 @@
             <div class="poetry-content" id="poetryContent">
                 <!-- 诗词内容将在这里显示 -->
             </div>
-            <div style="text-align: center; margin-top: 15px;">
+            <div style="text-align: center; margin-top: 15px; display: flex; gap: 10px; justify-content: center;">
                 <button class="btn" id="copyBtn" style="padding: 8px 16px; font-size: 0.9rem;">📋 复制诗词</button>
+                <button class="btn" id="regenerateBtn" style="padding: 8px 16px; font-size: 0.9rem;">🔄 重新生成</button>
             </div>
         </div>
         
@@ -289,6 +290,7 @@
         const elements = {
             poetryForm: document.getElementById('poetryForm'),
             generateBtn: document.getElementById('generateBtn'),
+            regenerateBtn: document.getElementById('regenerateBtn'),
             loadingContainer: document.getElementById('loadingContainer'),
             resultSection: document.getElementById('resultSection'),
             poetryContent: document.getElementById('poetryContent'),
@@ -325,8 +327,8 @@
         // 初始化
         initializeBuildings();
         
-        // 生成按钮点击事件
-        elements.generateBtn.addEventListener('click', async () => {
+        // 生成诗词函数
+        async function generatePoetry() {
             const style = elements.style.value;
             const building = elements.building.value;
             
@@ -354,6 +356,13 @@
                         <div class="poetry-lines">${formattedContent}</div>
                     `;
                     elements.resultSection.style.display = 'block';
+                    
+                    // 保存诗词到localStorage
+                    const poetryData = {
+                        title: data.title,
+                        content: data.content
+                    };
+                    localStorage.setItem('lastPoetry', JSON.stringify(poetryData));
                 } else {
                     elements.poetryContent.innerHTML = `<p style="color: red; text-align: center;">生成失败: ${data.error}</p>`;
                     elements.resultSection.style.display = 'block';
@@ -366,7 +375,13 @@
             } finally {
                 elements.loadingContainer.style.display = 'none';
             }
-        });
+        }
+        
+        // 生成按钮点击事件
+        elements.generateBtn.addEventListener('click', generatePoetry);
+        
+        // 重新生成按钮点击事件
+        elements.regenerateBtn.addEventListener('click', generatePoetry);
         
         // 复制按钮点击事件
         elements.copyBtn.addEventListener('click', () => {

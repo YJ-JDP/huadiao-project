@@ -1099,6 +1099,18 @@
                     </div>
                 </div>
                 
+                <!-- 班级长廊板块 -->
+                <div class="poetry-section">
+                    <h3>🏛️ 班级长廊</h3>
+                    <p>查看同学们的彩绘作品和原创诗词，共同欣赏和传承非遗文化的魅力</p>
+                    <p>这里展示了大家的创意成果，每一幅作品都承载着对传统文化的理解和热爱</p>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="/gallery" class="btn primary poetry-btn">
+                            <span class="poetry-btn-text">🌟 浏览班级长廊</span>
+                        </a>
+                    </div>
+                </div>
+                
                 <!-- 消息提示 -->
                 <div id="message" class="message"></div>
                 
@@ -1208,12 +1220,65 @@
             imagePreview: document.getElementById('imagePreview'),
             stylePreviewImage: document.querySelector('.image-preview .preview-image'),
             previewCaption: document.querySelector('.preview-caption'),
-            previewBtns: document.querySelectorAll('.preview-btn')
+            previewBtns: document.querySelectorAll('.preview-btn'),
+            poetrySection: document.querySelector('.poetry-section')
         };
 
         let selectedFile = null;
         let selectedStyle = '和玺彩画';
         let currentResultUrl = null;
+        
+        // 页面加载时恢复状态
+        window.addEventListener('DOMContentLoaded', () => {
+            restoreState();
+        });
+        
+        // 页面卸载前的提示
+        window.addEventListener('beforeunload', function(e) {
+            // 检查是否有生成的图片且未保存到长廊
+            if (currentResultUrl && !savedToGallery) {
+                // 弹出提示
+                const confirmationMessage = '您有未保存的作品，确定要离开吗？';
+                e.returnValue = confirmationMessage;
+                return confirmationMessage;
+            }
+        });
+        
+        // 保存状态到localStorage
+        function saveState() {
+            const state = {
+                selectedStyle: selectedStyle,
+                currentResultUrl: currentResultUrl
+                // 注意：由于安全限制，无法直接保存File对象到localStorage
+            };
+            localStorage.setItem('huadiaoState', JSON.stringify(state));
+        }
+        
+        // 从localStorage恢复状态
+        function restoreState() {
+            const savedState = localStorage.getItem('huadiaoState');
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    if (state.selectedStyle) {
+                        selectedStyle = state.selectedStyle;
+                        elements.selectedStyleText.textContent = selectedStyle;
+                    }
+                    if (state.currentResultUrl) {
+                        currentResultUrl = state.currentResultUrl;
+                        elements.resultImage.src = currentResultUrl;
+                        elements.resultArea.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('恢复状态失败:', error);
+                }
+            }
+        }
+        
+        // 清除状态
+        function clearState() {
+            localStorage.removeItem('huadiaoState');
+        }
 
         // 显示上传消息函数
         function showUploadMessage(text, isError = false) {
@@ -1290,6 +1355,8 @@
                 elements.selectedStyleText.textContent = selectedStyle;
                 elements.styleDropdown.style.display = 'none';
                 elements.styleSelectorBtn.classList.remove('active');
+                // 保存状态
+                saveState();
             });
         });
 
@@ -1314,6 +1381,10 @@
             elements.loadingArea.style.display = 'block';
             elements.resultArea.style.display = 'none';
             elements.generateBtn.disabled = true;
+            // 隐藏诗词创作模块
+            if (elements.poetrySection) {
+                elements.poetrySection.style.display = 'none';
+            }
 
             try {
                 const resp = await fetch('/api/upload', { method: 'POST', body: formData });
@@ -1323,6 +1394,8 @@
                     elements.resultImage.src = currentResultUrl;
                     elements.resultArea.style.display = 'block';
                     showMessage(data.message);
+                    // 保存状态
+                    saveState();
                 } else {
                     showMessage(data.error || '生成失败', true);
                 }
@@ -1332,6 +1405,10 @@
             } finally {
                 elements.loadingArea.style.display = 'none';
                 elements.generateBtn.disabled = false;
+                // 显示诗词创作模块
+                if (elements.poetrySection) {
+                    elements.poetrySection.style.display = 'block';
+                }
             }
         });
 
@@ -1347,8 +1424,67 @@
 
         // 保存到班级长廊
         elements.saveGalleryBtn.addEventListener('click', () => {
-            showMessage('班级长廊功能即将上线，敬请期待！');
+            if (!currentResultUrl) {
+                showMessage('请先生成作品后再保存', true);
+                return;
+            }
+            
+            // 弹出输入作者名的对话框
+            const author = prompt('请输入作者姓名：');
+            if (!author || author.trim() === '') {
+                showMessage('请输入有效的作者姓名', true);
+                return;
+            }
+            
+            // 确认保存
+            if (confirm('确定要将作品保存到班级长廊吗？')) {
+                saveToGallery(author.trim());
+            }
         });
+        
+        // 标记是否已经保存到长廊
+        let savedToGallery = false;
+        
+        // 保存作品到班级长廊
+        async function saveToGallery(author) {
+            try {
+                // 获取最后生成的诗词（从localStorage中获取）
+                const lastPoetry = localStorage.getItem('lastPoetry');
+                let poetry = null;
+                if (lastPoetry) {
+                    poetry = JSON.parse(lastPoetry);
+                }
+                
+                const response = await fetch('/api/save-to-gallery', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        author: author,
+                        image_url: currentResultUrl,
+                        poetry: poetry
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('作品已成功保存到班级长廊！');
+                    savedToGallery = true;
+                    // 清除状态，模拟刷新效果
+                    clearState();
+                    // 刷新页面以显示初始状态
+                    setTimeout(() => {
+                        location.reload();
+                    }, 2000);
+                } else {
+                    showMessage('保存失败：' + (data.error || '未知错误'), true);
+                }
+            } catch (error) {
+                console.error('保存到画廊失败:', error);
+                showMessage('网络错误，请重试', true);
+            }
+        }
 
         // Hero Card 按钮交互
         document.getElementById('btnScrollWorkshop').addEventListener('click', () => {

@@ -128,6 +128,14 @@ def index():
 def poetry():
     return render_template('poetry.html')
 
+@app.route('/gallery')
+def gallery():
+    return render_template('gallery.html')
+
+@app.route('/author/<author>')
+def author_page(author):
+    return render_template('author.html')
+
 @app.route('/api/generate-poetry', methods=['POST'])
 def generate_poetry_api():
     try:
@@ -203,6 +211,76 @@ def upload_file():
         'style': style,
         'message': f'已生成{style}风格作品'
     })
+
+# 班级长廊相关API
+import json
+
+GALLERY_JSON = 'templates/gallery.json'
+
+def load_gallery():
+    try:
+        if os.path.exists(GALLERY_JSON):
+            with open(GALLERY_JSON, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return []
+    except Exception as e:
+        print(f"加载画廊失败: {e}")
+        return []
+
+def save_gallery(data):
+    try:
+        with open(GALLERY_JSON, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:
+        print(f"保存画廊失败: {e}")
+        return False
+
+@app.route('/api/gallery')
+def get_gallery():
+    gallery_data = load_gallery()
+    return jsonify(gallery_data)
+
+@app.route('/api/save-to-gallery', methods=['POST'])
+def save_to_gallery():
+    try:
+        data = request.get_json()
+        author = data.get('author')
+        image_url = data.get('image_url')
+        poetry = data.get('poetry')
+        
+        if not author or not image_url:
+            return jsonify({'success': False, 'error': '缺少必要参数'}), 400
+        
+        gallery_data = load_gallery()
+        
+        # 生成新的ID
+        new_id = 1
+        if gallery_data:
+            new_id = max(item.get('id', 0) for item in gallery_data) + 1
+        
+        # 提取图片文件名
+        image_filename = image_url.split('/')[-1]
+        
+        # 创建新作品
+        new_item = {
+            'id': new_id,
+            'author': author,
+            'image_url': image_filename,
+            'poetry': poetry,
+            'created_at': datetime.now().isoformat()
+        }
+        
+        gallery_data.append(new_item)
+        
+        if save_gallery(gallery_data):
+            return jsonify({'success': True, 'message': '作品保存成功'})
+        else:
+            return jsonify({'success': False, 'error': '保存失败'}), 500
+            
+    except Exception as e:
+        print(f"保存到画廊失败: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
