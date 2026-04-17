@@ -1087,8 +1087,20 @@
                 <!-- 生成按钮 -->
                 <button id="generateBtn" class="generate-btn">✨ 开始创作 ✨</button>
                 
+                <!-- 结果区域 -->
+                <div id="resultArea" class="result-section" style="display:none;">
+                    <h3>创作结果</h3>
+                    <div class="result-area">
+                        <img id="resultImage" class="result-image">
+                        <div class="result-actions">
+                            <button id="downloadBtn" class="action-btn">📥 下载作品</button>
+                            <button id="saveGalleryBtn" class="action-btn">🏛️ 保存到班级长廊</button>
+                        </div>
+                    </div>
+                </div>
+                
                 <!-- 诗词创作板块 -->
-                <div class="poetry-section">
+                <div id="poetrySection" class="poetry-section">
                     <h3>📝 诗词创作</h3>
                     <p>基于所选彩绘风格和古建筑，AI为你创作符合意境的七言绝句</p>
                     <p>选择不同的彩绘风格和古建筑，体验传统艺术与现代科技的完美融合，让每一幅作品都有属于自己的诗意诠释。</p>
@@ -1100,13 +1112,25 @@
                 </div>
                 
                 <!-- 班级长廊板块 -->
-                <div class="poetry-section">
+                <div id="gallerySection" class="poetry-section">
                     <h3>🏛️ 班级长廊</h3>
                     <p>查看同学们的彩绘作品和原创诗词，共同欣赏和传承非遗文化的魅力</p>
                     <p>这里展示了大家的创意成果，每一幅作品都承载着对传统文化的理解和热爱</p>
                     <div style="text-align: center; margin-top: 15px;">
                         <a href="/gallery" class="btn primary poetry-btn">
                             <span class="poetry-btn-text">🌟 浏览班级长廊</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- 3D古建彩绘馆板块 -->
+                <div id="model3dSection" class="poetry-section">
+                    <h3>🎨 3D古建彩绘馆</h3>
+                    <p>将你的彩绘作品贴到3D古建筑模型上，体验不一样的视觉效果</p>
+                    <p>支持太和殿、赵州桥、侗族风雨楼等多种古建筑模型，可选择整体或局部贴图</p>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="/model" class="btn primary poetry-btn">
+                            <span class="poetry-btn-text">🏛️ 进入3D彩绘馆</span>
                         </a>
                     </div>
                 </div>
@@ -1118,18 +1142,6 @@
                 <div id="loadingArea" class="result-area" style="display:none;">
                     <div class="loading"></div>
                     <p>AI 正在创作中，请稍候...</p>
-                </div>
-                
-                <!-- 结果区域 -->
-                <div id="resultArea" class="result-section" style="display:none;">
-                    <h3>创作结果</h3>
-                    <div class="result-area">
-                        <img id="resultImage" class="result-image">
-                        <div class="result-actions">
-                            <button id="downloadBtn" class="action-btn">📥 下载作品</button>
-                            <button id="saveGalleryBtn" class="action-btn">🏛️ 保存到班级长廊</button>
-                        </div>
-                    </div>
                 </div>
             </div>
             
@@ -1221,7 +1233,9 @@
             stylePreviewImage: document.querySelector('.image-preview .preview-image'),
             previewCaption: document.querySelector('.preview-caption'),
             previewBtns: document.querySelectorAll('.preview-btn'),
-            poetrySection: document.querySelector('.poetry-section')
+            poetrySection: document.getElementById('poetrySection'),
+            gallerySection: document.getElementById('gallerySection'),
+            model3dSection: document.getElementById('model3dSection')
         };
 
         let selectedFile = null;
@@ -1381,9 +1395,15 @@
             elements.loadingArea.style.display = 'block';
             elements.resultArea.style.display = 'none';
             elements.generateBtn.disabled = true;
-            // 隐藏诗词创作模块
+            // 隐藏诗词创作、班级长廊、3D彩绘馆模块
             if (elements.poetrySection) {
                 elements.poetrySection.style.display = 'none';
+            }
+            if (elements.gallerySection) {
+                elements.gallerySection.style.display = 'none';
+            }
+            if (elements.model3dSection) {
+                elements.model3dSection.style.display = 'none';
             }
 
             try {
@@ -1405,10 +1425,6 @@
             } finally {
                 elements.loadingArea.style.display = 'none';
                 elements.generateBtn.disabled = false;
-                // 显示诗词创作模块
-                if (elements.poetrySection) {
-                    elements.poetrySection.style.display = 'block';
-                }
             }
         });
 

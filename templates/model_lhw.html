@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>3D 古建筑模型展示与贴图</title>
+    <title>3D 古建筑彩绘馆</title>
 
     <style>
         * {
@@ -68,9 +68,44 @@
         }
 
         #toolbar h2 {
-            margin: 0 0 6px 0;
+            margin: 0;
             font-size: 20px;
             color: #302b63;
+            display: inline-block;
+        }
+
+        .toolbar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .toggle-btn {
+            background: transparent;
+            border: none;
+            font-size: 20px;
+            color: #302b63;
+            cursor: pointer;
+            padding: 0 5px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-btn:hover {
+            background: transparent;
+            color: #1f57b8;
+        }
+
+        #toolbarContent {
+            overflow: hidden;
+            transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 600px;
+            opacity: 1;
+        }
+
+        #toolbarContent.collapsed {
+            max-height: 0;
+            opacity: 0;
         }
 
         #status {
@@ -166,12 +201,38 @@
             display: block;
         }
 
-        #back-link {
+        #navButtons {
             position: fixed;
             top: 24px;
             right: 24px;
             z-index: 10;
-            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            gap: 10px;
+        }
+
+        .nav-btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .capture-btn {
+            background: rgba(226, 176, 74, 0.95);
+            color: #302b63;
+        }
+
+        .capture-btn:hover {
+            background: #e2b04a;
+            transform: translateY(-1px);
+        }
+
+        #back-link {
+            background: rgba(255, 255, 255, 0.95);
             padding: 10px 18px;
             border-radius: 10px;
             text-decoration: none;
@@ -204,54 +265,62 @@
 </div>
 
 <div id="toolbar">
-    <h2>3D 古建筑模型展示与贴图</h2>
-    <div id="status">正在加载模型...</div>
-
-    <div class="section">
-        <div class="section-title">选择模型</div>
-        <div class="model-selector">
-            <button class="model-btn active" data-model="taihedian">太和殿</button>
-            <button class="model-btn" data-model="zhaozhouqiao">赵州桥</button>
-            <button class="model-btn" data-model="fengyulou">侗族风雨楼</button>
+    <div class="toolbar-header">
+        <h2>3D 古建筑彩绘馆</h2>
+        <button id="toggleToolbarBtn" class="toggle-btn">▼</button>
+    </div>
+    <div id="toolbarContent">
+        <div id="status">正在加载模型...</div>
+        
+        <div class="section">
+            <div class="section-title">选择模型</div>
+            <div class="model-selector">
+                <button class="model-btn active" data-model="taihedian">太和殿</button>
+                <button class="model-btn" data-model="zhaozhouqiao">赵州桥</button>
+                <button class="model-btn" data-model="fengyulou">侗族风雨楼</button>
+            </div>
         </div>
-    </div>
 
-    <div class="section">
-        <div class="toggle-row">
-            <label>自动旋转</label>
-            <button id="toggleRotateBtn" class="active">开启</button>
+        <div class="section">
+            <div class="toggle-row">
+                <label>自动旋转</label>
+                <button id="toggleRotateBtn">关闭</button>
+            </div>
         </div>
-    </div>
 
-    <div class="section">
-        <div class="section-title">上传风格迁移图片</div>
-        <input type="file" id="textureInput" accept="image/*">
-        <img id="preview" alt="纹理预览">
-    </div>
+        <div class="section">
+            <div class="section-title">上传风格迁移图片</div>
+            <input type="file" id="textureInput" accept="image/*">
+            <img id="preview" alt="纹理预览">
+        </div>
 
-    <div class="section">
-        <div class="section-title">贴图操作</div>
-        <button id="applyAllBtn">整体贴图</button>
-        <button id="applySelectedBtn">给选中部件贴图</button>
-        <button id="restoreBtn">恢复原材质</button>
-    </div>
+        <div class="section">
+            <div class="section-title">贴图操作</div>
+            <button id="applySelectedBtn">给选中部件贴图</button>
+            <button id="undoSelectedBtn">撤销选中部件</button>
+            <button id="restoreBtn">恢复全部</button>
+        </div>
 
-    <div class="section">
-        <div class="section-title">视图操作</div>
-        <button id="resetViewBtn">重置视角</button>
-    </div>
+        <div class="section">
+            <div class="section-title">视图操作</div>
+            <button id="resetViewBtn">重置视角</button>
+        </div>
 
-    <div class="tip">
-        操作说明：<br>
-        1. 选择要查看的古建筑模型<br>
-        2. 上传风格迁移后的图片<br>
-        3. 可点击"整体贴图"给整个模型贴图<br>
-        4. 或先点击模型部件选中，再局部贴图<br>
-        5. 当前选中的部件会被高亮显示
+        <div class="tip">
+            操作说明：<br>
+            1. 选择要查看的古建筑模型<br>
+            2. 上传风格迁移后的图片<br>
+            3. 点击模型部件进行选中（选中部件会高亮）<br>
+            4. 点击"给选中部件贴图"完成局部贴图<br>
+            5. 可随时开启/关闭自动旋转
+        </div>
     </div>
 </div>
 
-<a id="back-link" href="/">返回首页</a>
+<div id="navButtons">
+    <button id="captureBtn" class="nav-btn capture-btn">📷 拍照</button>
+    <a id="back-link" href="/">返回首页</a>
+</div>
 
 <script type="module">
     import * as THREE from "three";
@@ -262,20 +331,24 @@
     const statusDiv = document.getElementById("status");
     const textureInput = document.getElementById("textureInput");
     const previewImg = document.getElementById("preview");
-    const applyAllBtn = document.getElementById("applyAllBtn");
     const applySelectedBtn = document.getElementById("applySelectedBtn");
+    const undoSelectedBtn = document.getElementById("undoSelectedBtn");
     const restoreBtn = document.getElementById("restoreBtn");
     const resetViewBtn = document.getElementById("resetViewBtn");
     const toggleRotateBtn = document.getElementById("toggleRotateBtn");
     const loadingScreen = document.getElementById("loading-screen");
     const modelButtons = document.querySelectorAll(".model-btn");
+    const toggleToolbarBtn = document.getElementById("toggleToolbarBtn");
+    const toolbarContent = document.getElementById("toolbarContent");
+    const captureBtn = document.getElementById("captureBtn");
 
     let uploadedTexture = null;
     let loadedModel = null;
     let selectedMesh = null;
     let highlightedMesh = null;
-    let autoRotate = true;
+    let autoRotate = false;
     let currentModelName = "taihedian";
+    let toolbarCollapsed = false;
 
     const originalMaterials = new Map();
 
@@ -317,7 +390,7 @@
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.target.copy(initialTarget);
-    controls.autoRotate = true;
+    controls.autoRotate = false;
     controls.autoRotateSpeed = 1.5;
     controls.update();
 
@@ -429,6 +502,9 @@
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
+                        if (!child.geometry.attributes.uv) {
+                            generateUVCoordinates(child.geometry);
+                        }
                     }
                 });
 
@@ -481,6 +557,26 @@
         }
     });
 
+    toggleToolbarBtn.addEventListener("click", function() {
+        toolbarCollapsed = !toolbarCollapsed;
+        if (toolbarCollapsed) {
+            toolbarContent.classList.add("collapsed");
+            toggleToolbarBtn.textContent = "▶";
+        } else {
+            toolbarContent.classList.remove("collapsed");
+            toggleToolbarBtn.textContent = "▼";
+        }
+    });
+
+    captureBtn.addEventListener("click", function() {
+        renderer.render(scene, camera);
+        const dataURL = renderer.domElement.toDataURL("image/png");
+        const link = document.createElement("a");
+        link.download = `huadiao_3d_${Date.now()}.png`;
+        link.href = dataURL;
+        link.click();
+    });
+
     textureInput.addEventListener("change", function(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -493,17 +589,12 @@
         textureLoader.load(
             imageURL,
             function(texture) {
+                texture.colorSpace = THREE.SRGBColorSpace;
                 uploadedTexture = texture;
-                uploadedTexture.colorSpace = THREE.SRGBColorSpace;
-                uploadedTexture.wrapS = THREE.RepeatWrapping;
-                uploadedTexture.wrapT = THREE.RepeatWrapping;
-                uploadedTexture.repeat.set(1, 1);
-                uploadedTexture.flipY = false;
-
                 statusDiv.innerText =
                     "图片上传成功\n"
                     + "文件名：" + file.name + "\n"
-                    + "可选择整体贴图，或先点模型部件再局部贴图";
+                    + "请先点击模型部件选中，再点击给选中部件贴图";
             },
             undefined,
             function(err) {
@@ -511,25 +602,6 @@
                 statusDiv.innerText = "图片加载失败";
             }
         );
-    });
-
-    applyAllBtn.addEventListener("click", function() {
-        if (!loadedModel) {
-            statusDiv.innerText = "模型尚未加载完成";
-            return;
-        }
-        if (!uploadedTexture) {
-            statusDiv.innerText = "请先上传图片";
-            return;
-        }
-
-        loadedModel.traverse(function(child) {
-            if (child.isMesh) {
-                child.material = createTexturedMaterial(child.material, uploadedTexture);
-            }
-        });
-
-        statusDiv.innerText = "整体贴图已完成";
     });
 
     applySelectedBtn.addEventListener("click", function() {
@@ -546,11 +618,39 @@
             return;
         }
 
+        console.log("准备贴图，选中的mesh:", selectedMesh);
+        console.log("纹理对象:", uploadedTexture);
+        console.log("纹理image:", uploadedTexture.image);
+        if (selectedMesh.geometry.attributes.uv) {
+            console.log("UV坐标存在:", selectedMesh.geometry.attributes.uv.array.slice(0, 10));
+        } else {
+            console.log("UV坐标: undefined");
+        }
+
         selectedMesh.material = createTexturedMaterial(selectedMesh.material, uploadedTexture);
+        selectedMesh.material.needsUpdate = true;
+        console.log("贴图后的材质:", selectedMesh.material);
 
         statusDiv.innerText =
             "已对选中部件贴图\n"
             + "Mesh 名称：" + (selectedMesh.name || "未命名");
+    });
+
+    undoSelectedBtn.addEventListener("click", function() {
+        if (!loadedModel) return;
+        if (!selectedMesh) {
+            statusDiv.innerText = "请先选中要撤销的部件";
+            return;
+        }
+        if (originalMaterials.has(selectedMesh.uuid)) {
+            selectedMesh.material = originalMaterials.get(selectedMesh.uuid);
+            selectedMesh.material.needsUpdate = true;
+            clearHighlight();
+            selectedMesh = null;
+            statusDiv.innerText = "已撤销选中部件的贴图";
+        } else {
+            statusDiv.innerText = "该部件没有可撤销的贴图";
+        }
     });
 
     restoreBtn.addEventListener("click", function() {
@@ -643,19 +743,36 @@
     }
 
     function createTexturedMaterial(oldMaterial, texture) {
-        let newMaterial;
-
-        if (oldMaterial && oldMaterial.isMeshStandardMaterial) {
-            newMaterial = oldMaterial.clone();
-        } else {
-            newMaterial = new THREE.MeshStandardMaterial();
-        }
-
+        const newMaterial = new THREE.MeshStandardMaterial();
         newMaterial.map = texture;
+        texture.colorSpace = THREE.SRGBColorSpace;
         newMaterial.color = new THREE.Color(0xffffff);
+        newMaterial.roughness = 0.7;
+        newMaterial.metalness = 0.1;
         newMaterial.needsUpdate = true;
-
         return newMaterial;
+    }
+    
+    function generateUVCoordinates(geometry) {
+        const position = geometry.attributes.position;
+        const count = position.count;
+        const uvArray = new Float32Array(count * 2);
+        
+        geometry.computeBoundingBox();
+        const box = geometry.boundingBox;
+        const range = new THREE.Vector3();
+        box.getSize(range);
+        
+        for (let i = 0; i < count; i++) {
+            const x = position.getX(i);
+            const y = position.getY(i);
+            const z = position.getZ(i);
+            
+            uvArray[i * 2] = (x - box.min.x) / range.x;
+            uvArray[i * 2 + 1] = (y - box.min.y) / range.y;
+        }
+        
+        geometry.setAttribute('uv', new THREE.BufferAttribute(uvArray, 2));
     }
 
     function cacheOriginalMaterials(model) {
