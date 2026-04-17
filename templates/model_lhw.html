@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>3D 古建筑模型展示与贴图</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: "Microsoft YaHei", sans-serif;
+            background: #1a1a2e;
+        }
+
+        #loading-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            transition: opacity 0.6s ease;
+        }
+
+        #loading-screen.fade-out {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .spinner {
+            width: 60px;
+            height: 60px;
+            border: 5px solid rgba(255, 255, 255, 0.15);
+            border-top-color: #e2b04a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #loading-screen p {
+            margin-top: 20px;
+            font-size: 18px;
+            letter-spacing: 2px;
+        }
+
+        #toolbar {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 18px;
+            border-radius: 14px;
+            width: 400px;
+            box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        #toolbar h2 {
+            margin: 0 0 6px 0;
+            font-size: 20px;
+            color: #302b63;
+        }
+
+        #status {
+            font-size: 14px;
+            color: #444;
+            line-height: 1.6;
+            white-space: pre-line;
+            margin-bottom: 8px;
+        }
+
+        .section {
+            margin-top: 12px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 15px;
+            margin-bottom: 8px;
+            color: #302b63;
+        }
+
+        button, input[type="file"] {
+            margin-top: 6px;
+            margin-right: 6px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        button {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 8px;
+            background: #2d6cdf;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #1f57b8;
+        }
+
+        button.active {
+            background: #e2b04a;
+            color: #302b63;
+            font-weight: bold;
+        }
+
+        #preview {
+            max-width: 100%;
+            max-height: 120px;
+            margin-top: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            display: none;
+        }
+
+        .tip {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.6;
+            margin-top: 6px;
+        }
+
+        .model-selector {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .model-selector button {
+            flex: 1;
+            min-width: 100px;
+            font-size: 12px;
+            padding: 8px 10px;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 8px;
+        }
+
+        .toggle-row label {
+            font-size: 14px;
+            color: #333;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #back-link {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #302b63;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: background 0.2s;
+        }
+
+        #back-link:hover {
+            background: #fff;
+        }
+    </style>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+
+<div id="loading-screen">
+    <div class="spinner"></div>
+    <p>正在加载 3D 场景...</p>
+</div>
+
+<div id="toolbar">
+    <h2>3D 古建筑模型展示与贴图</h2>
+    <div id="status">正在加载模型...</div>
+
+    <div class="section">
+        <div class="section-title">选择模型</div>
+        <div class="model-selector">
+            <button class="model-btn active" data-model="taihedian">太和殿</button>
+            <button class="model-btn" data-model="zhaozhouqiao">赵州桥</button>
+            <button class="model-btn" data-model="fengyulou">侗族风雨楼</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="toggle-row">
+            <label>自动旋转</label>
+            <button id="toggleRotateBtn" class="active">开启</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">上传风格迁移图片</div>
+        <input type="file" id="textureInput" accept="image/*">
+        <img id="preview" alt="纹理预览">
+    </div>
+
+    <div class="section">
+        <div class="section-title">贴图操作</div>
+        <button id="applyAllBtn">整体贴图</button>
+        <button id="applySelectedBtn">给选中部件贴图</button>
+        <button id="restoreBtn">恢复原材质</button>
+    </div>
+
+    <div class="section">
+        <div class="section-title">视图操作</div>
+        <button id="resetViewBtn">重置视角</button>
+    </div>
+
+    <div class="tip">
+        操作说明：<br>
+        1. 选择要查看的古建筑模型<br>
+        2. 上传风格迁移后的图片<br>
+        3. 可点击"整体贴图"给整个模型贴图<br>
+        4. 或先点击模型部件选中，再局部贴图<br>
+        5. 当前选中的部件会被高亮显示
+    </div>
+</div>
+
+<a id="back-link" href="/">返回首页</a>
+
+<script type="module">
+    import * as THREE from "three";
+    import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+    import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+    import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
+
+    const statusDiv = document.getElementById("status");
+    const textureInput = document.getElementById("textureInput");
+    const previewImg = document.getElementById("preview");
+    const applyAllBtn = document.getElementById("applyAllBtn");
+    const applySelectedBtn = document.getElementById("applySelectedBtn");
+    const restoreBtn = document.getElementById("restoreBtn");
+    const resetViewBtn = document.getElementById("resetViewBtn");
+    const toggleRotateBtn = document.getElementById("toggleRotateBtn");
+    const loadingScreen = document.getElementById("loading-screen");
+    const modelButtons = document.querySelectorAll(".model-btn");
+
+    let uploadedTexture = null;
+    let loadedModel = null;
+    let selectedMesh = null;
+    let highlightedMesh = null;
+    let autoRotate = true;
+    let currentModelName = "taihedian";
+
+    const originalMaterials = new Map();
+
+    const initialCameraPosition = new THREE.Vector3(6, 4, 8);
+    const initialTarget = new THREE.Vector3(0, 2, 0);
+
+    const scene = new THREE.Scene();
+
+    const gradientCanvas = document.createElement("canvas");
+    gradientCanvas.width = 512;
+    gradientCanvas.height = 512;
+    const ctx = gradientCanvas.getContext("2d");
+    const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+    gradient.addColorStop(0, "#1a1a2e");
+    gradient.addColorStop(0.5, "#16213e");
+    gradient.addColorStop(1, "#0f3460");
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 512, 512);
+    const gradientTexture = new THREE.CanvasTexture(gradientCanvas);
+    scene.background = gradientTexture;
+
+    const camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        3000
+    );
+    camera.position.copy(initialCameraPosition);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.target.copy(initialTarget);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 1.5;
+    controls.update();
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+    scene.add(ambientLight);
+
+    const directionalLight1 = new THREE.DirectionalLight(0xffffff, 2.5);
+    directionalLight1.position.set(8, 12, 10);
+    directionalLight1.castShadow = true;
+    directionalLight1.shadow.mapSize.width = 2048;
+    directionalLight1.shadow.mapSize.height = 2048;
+    directionalLight1.shadow.camera.near = 0.5;
+    directionalLight1.shadow.camera.far = 100;
+    directionalLight1.shadow.camera.left = -15;
+    directionalLight1.shadow.camera.right = 15;
+    directionalLight1.shadow.camera.top = 15;
+    directionalLight1.shadow.camera.bottom = -15;
+    directionalLight1.shadow.bias = -0.001;
+    scene.add(directionalLight1);
+
+    const directionalLight2 = new THREE.DirectionalLight(0xffe0b0, 1.2);
+    directionalLight2.position.set(-8, 6, -8);
+    scene.add(directionalLight2);
+
+    const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.8);
+    scene.add(hemiLight);
+
+    const groundGeometry = new THREE.PlaneGeometry(100, 100);
+    const groundMaterial = new THREE.MeshStandardMaterial({
+        color: 0x333340,
+        roughness: 0.9,
+        metalness: 0.1
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -0.01;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+
+    let pointerDownX = 0;
+    let pointerDownY = 0;
+    let isPointerDragging = false;
+
+    const models = {
+        taihedian: "/static/models/taihedian.glb",
+        zhaozhouqiao: "/static/models/zhaozhouqiao.glb",
+        fengyulou: "/static/models/fengyulou.glb"
+    };
+
+    const modelNames = {
+        taihedian: "太和殿",
+        zhaozhouqiao: "赵州桥",
+        fengyulou: "侗族风雨楼"
+    };
+
+    function hideLoading() {
+        loadingScreen.classList.add("fade-out");
+        setTimeout(() => {
+            loadingScreen.style.display = "none";
+        }, 600);
+    }
+
+    function showLoading() {
+        loadingScreen.style.display = "flex";
+        loadingScreen.classList.remove("fade-out");
+    }
+
+    function clearCurrentModel() {
+        if (loadedModel) {
+            scene.remove(loadedModel);
+            loadedModel.traverse(function(child) {
+                if (child.isMesh) {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                }
+            });
+        }
+        loadedModel = null;
+        selectedMesh = null;
+        highlightedMesh = null;
+        originalMaterials.clear();
+    }
+
+    function loadModel(modelKey) {
+        if (!models[modelKey]) {
+            statusDiv.innerText = "模型文件不存在：" + modelNames[modelKey];
+            hideLoading();
+            return;
+        }
+
+        clearCurrentModel();
+
+        const loader = new GLTFLoader();
+        loader.load(
+            models[modelKey],
+            function (gltf) {
+                loadedModel = gltf.scene;
+
+                loadedModel.traverse(function(child) {
+                    if (child.isMesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                scene.add(loadedModel);
+                centerAndScaleModel(loadedModel);
+                cacheOriginalMaterials(loadedModel);
+
+                statusDiv.innerText =
+                    "当前模型：" + modelNames[modelKey] + "\n"
+                    + "请上传图片后进行贴图\n"
+                    + "你也可以先点击模型部件进行选中";
+
+                hideLoading();
+            },
+            function (xhr) {
+                if (xhr.total > 0) {
+                    const percent = (xhr.loaded / xhr.total * 100).toFixed(1);
+                    statusDiv.innerText = "模型加载中：" + percent + "%";
+                } else {
+                    statusDiv.innerText = "模型加载中...";
+                }
+            },
+            function (error) {
+                console.error("模型加载失败：", error);
+                statusDiv.innerText = "模型加载失败，请检查：" + modelNames[modelKey] + " 是否存在于 static/models/ 文件夹中";
+                hideLoading();
+            }
+        );
+    }
+
+    modelButtons.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+            modelButtons.forEach(function(b) { b.classList.remove("active"); });
+            btn.classList.add("active");
+            currentModelName = btn.dataset.model;
+            showLoading();
+            loadModel(currentModelName);
+        });
+    });
+
+    toggleRotateBtn.addEventListener("click", function() {
+        autoRotate = !autoRotate;
+        controls.autoRotate = autoRotate;
+        if (autoRotate) {
+            toggleRotateBtn.textContent = "开启";
+            toggleRotateBtn.classList.add("active");
+        } else {
+            toggleRotateBtn.textContent = "关闭";
+            toggleRotateBtn.classList.remove("active");
+        }
+    });
+
+    textureInput.addEventListener("change", function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const imageURL = URL.createObjectURL(file);
+        previewImg.src = imageURL;
+        previewImg.style.display = "block";
+
+        const textureLoader = new THREE.TextureLoader();
+        textureLoader.load(
+            imageURL,
+            function(texture) {
+                uploadedTexture = texture;
+                uploadedTexture.colorSpace = THREE.SRGBColorSpace;
+                uploadedTexture.wrapS = THREE.RepeatWrapping;
+                uploadedTexture.wrapT = THREE.RepeatWrapping;
+                uploadedTexture.repeat.set(1, 1);
+                uploadedTexture.flipY = false;
+
+                statusDiv.innerText =
+                    "图片上传成功\n"
+                    + "文件名：" + file.name + "\n"
+                    + "可选择整体贴图，或先点模型部件再局部贴图";
+            },
+            undefined,
+            function(err) {
+                console.error("纹理加载失败：", err);
+                statusDiv.innerText = "图片加载失败";
+            }
+        );
+    });
+
+    applyAllBtn.addEventListener("click", function() {
+        if (!loadedModel) {
+            statusDiv.innerText = "模型尚未加载完成";
+            return;
+        }
+        if (!uploadedTexture) {
+            statusDiv.innerText = "请先上传图片";
+            return;
+        }
+
+        loadedModel.traverse(function(child) {
+            if (child.isMesh) {
+                child.material = createTexturedMaterial(child.material, uploadedTexture);
+            }
+        });
+
+        statusDiv.innerText = "整体贴图已完成";
+    });
+
+    applySelectedBtn.addEventListener("click", function() {
+        if (!loadedModel) {
+            statusDiv.innerText = "模型尚未加载完成";
+            return;
+        }
+        if (!uploadedTexture) {
+            statusDiv.innerText = "请先上传图片";
+            return;
+        }
+        if (!selectedMesh) {
+            statusDiv.innerText = "请先点击模型中的某个部件";
+            return;
+        }
+
+        selectedMesh.material = createTexturedMaterial(selectedMesh.material, uploadedTexture);
+
+        statusDiv.innerText =
+            "已对选中部件贴图\n"
+            + "Mesh 名称：" + (selectedMesh.name || "未命名");
+    });
+
+    restoreBtn.addEventListener("click", function() {
+        if (!loadedModel) return;
+
+        loadedModel.traverse(function(child) {
+            if (child.isMesh && originalMaterials.has(child.uuid)) {
+                child.material = originalMaterials.get(child.uuid);
+            }
+        });
+
+        clearHighlight();
+        selectedMesh = null;
+        statusDiv.innerText = "已恢复原材质";
+    });
+
+    resetViewBtn.addEventListener("click", function() {
+        camera.position.copy(initialCameraPosition);
+        controls.target.copy(initialTarget);
+        controls.update();
+    });
+
+    renderer.domElement.addEventListener("pointerdown", function(event) {
+        pointerDownX = event.clientX;
+        pointerDownY = event.clientY;
+        isPointerDragging = false;
+    });
+
+    renderer.domElement.addEventListener("pointerup", function(event) {
+        const dx = event.clientX - pointerDownX;
+        const dy = event.clientY - pointerDownY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < 5) {
+            handleModelClick(event);
+        }
+    });
+
+    function handleModelClick(event) {
+        if (!loadedModel) return;
+
+        const rect = renderer.domElement.getBoundingClientRect();
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+
+        const meshes = [];
+        loadedModel.traverse(function(child) {
+            if (child.isMesh) meshes.push(child);
+        });
+
+        const intersects = raycaster.intersectObjects(meshes, true);
+
+        if (intersects.length > 0) {
+            const picked = intersects[0].object;
+            selectedMesh = picked;
+            highlightSelectedMesh(picked);
+
+            statusDiv.innerText =
+                "已选中部件\n"
+                + "Mesh 名称：" + (picked.name || "未命名") + "\n"
+                + "现在可点击给选中部件贴图";
+        }
+    }
+
+    function highlightSelectedMesh(mesh) {
+        clearHighlight();
+
+        highlightedMesh = mesh;
+
+        if (!mesh.userData.originalEmissive) {
+            mesh.userData.originalEmissive = mesh.material.emissive
+                ? mesh.material.emissive.clone()
+                : new THREE.Color(0x000000);
+        }
+
+        if (mesh.material.emissive) {
+            mesh.material.emissive.set(0x4444ff);
+        }
+    }
+
+    function clearHighlight() {
+        if (highlightedMesh && highlightedMesh.material && highlightedMesh.material.emissive) {
+            if (highlightedMesh.userData.originalEmissive) {
+                highlightedMesh.material.emissive.copy(highlightedMesh.userData.originalEmissive);
+            }
+        }
+        highlightedMesh = null;
+    }
+
+    function createTexturedMaterial(oldMaterial, texture) {
+        let newMaterial;
+
+        if (oldMaterial && oldMaterial.isMeshStandardMaterial) {
+            newMaterial = oldMaterial.clone();
+        } else {
+            newMaterial = new THREE.MeshStandardMaterial();
+        }
+
+        newMaterial.map = texture;
+        newMaterial.color = new THREE.Color(0xffffff);
+        newMaterial.needsUpdate = true;
+
+        return newMaterial;
+    }
+
+    function cacheOriginalMaterials(model) {
+        model.traverse(function(child) {
+            if (child.isMesh) {
+                originalMaterials.set(child.uuid, child.material);
+            }
+        });
+    }
+
+    function centerAndScaleModel(model) {
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        model.position.x -= center.x;
+        model.position.y -= center.y;
+        model.position.z -= center.z;
+
+        const maxSize = Math.max(size.x, size.y, size.z);
+        if (maxSize > 0) {
+            const targetSize = 8;
+            const scale = targetSize / maxSize;
+            model.scale.setScalar(scale);
+        }
+
+        const newBox = new THREE.Box3().setFromObject(model);
+        model.position.y -= newBox.min.y;
+
+        controls.target.set(0, 2, 0);
+        controls.update();
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener("resize", function () {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    showLoading();
+    loadModel("taihedian");
+</script>
+
+</body>
+</html>
