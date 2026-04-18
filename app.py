@@ -25,12 +25,16 @@ os.makedirs(app.config['RESULT_FOLDER'], exist_ok=True)
 # 获取 API Key
 QIANFAN_API_KEY = os.getenv("QIANFAN_API_KEY")
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
+QIANFAN_SHITU_API_KEY = os.getenv("QIANFAN_SHITU_API_KEY")
 print("QIANFAN API Key loaded:", QIANFAN_API_KEY[:15] + "..." if QIANFAN_API_KEY else "None")
 print("DEEPSEEK API Key loaded:", DEEPSEEK_API_KEY[:15] + "..." if DEEPSEEK_API_KEY else "None")
+print("QIANFAN SHITU API Key loaded:", QIANFAN_SHITU_API_KEY[:15] + "..." if QIANFAN_SHITU_API_KEY else "None")
 if not QIANFAN_API_KEY:
     raise ValueError("请在 .env 文件中设置 QIANFAN_API_KEY")
 if not DEEPSEEK_API_KEY:
     raise ValueError("请在 .env 文件中设置 DEEPSEEK_API_KEY")
+if not QIANFAN_SHITU_API_KEY:
+    raise ValueError("请在 .env 文件中设置 QIANFAN_SHITU_API_KEY")
 
 # 初始化 OpenAI 客户端
 client = OpenAI(base_url='https://qianfan.baidubce.com/v2', api_key=QIANFAN_API_KEY)
@@ -57,12 +61,96 @@ def compress_image(image_path, max_size=(1024, 1024)):
         print(f"压缩失败: {e}")
         return False
 
-def generate_image(prompt, save_path):
+def analyze_image(image_path):
+    try:
+        # 读取图片并转换为base64
+        with open(image_path, 'rb') as f:
+            image_data = f.read()
+        image_b64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # 调用百度千帆图片分析API
+        url = "https://qianfan.baidubce.com/v2/tools/image_general"
+        headers = {
+            "Authorization": f"Bearer {QIANFAN_SHITU_API_KEY}",
+            "HOST": "qianfan.baidubce.com",
+            "Content-Type": "application/json"
+        }
+        data = {
+            "image_b64": image_b64
+        }
+        
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()
+        result = response.json()
+        
+        # 解析响应
+        if result.get('code') == '0':
+            data = result.get('data', {})
+            query_context = data.get('query_context', {})
+            
+            # 提取主要内容
+            main_content = "图片内容"
+            
+            # 检查guesswords字段
+            guesswords = query_context.get('guesswords', [])
+            
+            # 处理guesswords可能是数组的情况
+            if isinstance(guesswords, list) and guesswords:
+                # 取第一个guessword
+                first_guess = guesswords[0]
+                if isinstance(first_guess, dict):
+                    # 优先使用word字段
+                    if 'word' in first_guess:
+                        main_content = first_guess.get('word', '图片内容')
+                    # 检查extend_brief
+                    elif 'extend_brief' in first_guess:
+                        extend_brief = first_guess['extend_brief']
+                        if isinstance(extend_brief, dict):
+                            # 检查各种摘要字段
+                            for abstract_key in ['mlm_abstract', 'animal_abstract', 'plant_abstract', 'product_abstract']:
+                                if abstract_key in extend_brief:
+                                    abstract = extend_brief[abstract_key]
+                                    if isinstance(abstract, dict) and 'content' in abstract:
+                                        main_content = abstract['content']
+                                        break
+                                    elif isinstance(abstract, str):
+                                        main_content = abstract
+                                        break
+            
+            # 处理guesswords是对象的情况
+            elif isinstance(guesswords, dict):
+                if 'word' in guesswords:
+                    main_content = guesswords.get('word', '图片内容')
+                elif 'extend_brief' in guesswords:
+                    extend_brief = guesswords['extend_brief']
+                    if isinstance(extend_brief, dict):
+                        for abstract_key in ['mlm_abstract', 'animal_abstract', 'plant_abstract', 'product_abstract']:
+                            if abstract_key in extend_brief:
+                                abstract = extend_brief[abstract_key]
+                                if isinstance(abstract, dict) and 'content' in abstract:
+                                    main_content = abstract['content']
+                                    break
+                                elif isinstance(abstract, str):
+                                    main_content = abstract
+                                    break
+            
+            # 确保内容简洁
+            main_content = main_content[:100]  # 限制长度
+            
+            return main_content
+        else:
+            print(f"图片分析失败: {result.get('message', 'Unknown error')}")
+            return "图片内容"
+    except Exception as e:
+        print(f"图片分析异常: {e}")
+        return "图片内容"
+
+def generate_image(prompt, save_path, size="1024x1024"):
     try:
         response = client.images.generate(
             model="qwen-image",
             prompt=prompt,
-            size="1024x1024",
+            size=size,
             n=1
         )
         if response.data[0].b64_json:
@@ -136,6 +224,10 @@ def gallery():
 def author_page(author):
     return render_template('author.html')
 
+@app.route('/model')
+def model_page():
+    return render_template('model_lhw.html')
+
 @app.route('/api/generate-poetry', methods=['POST'])
 def generate_poetry_api():
     try:
@@ -181,6 +273,13 @@ def upload_file():
     style = request.form.get('style', '和玺彩画')
     if style not in STYLES:
         style = '和玺彩画'
+    
+    # 获取比例参数
+    aspect_ratio = request.form.get('aspect_ratio', '1024x1024')
+    # 验证比例值
+    valid_ratios = ['1024x1024', '1024x1536', '1536x1024']
+    if aspect_ratio not in valid_ratios:
+        aspect_ratio = '1024x1024'
 
     # 2. 保存原图
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -190,8 +289,9 @@ def upload_file():
     file.save(original_path)
     compress_image(original_path)
 
-    # 3. 暂时使用固定描述（避免视觉分析出错）
-    description = "一幅中国传统风格的图片"
+    # 3. 分析图片内容
+    description = analyze_image(original_path)
+    print(f"图片分析结果: {description}")
 
     # 4. 构造 prompt
     style_desc = STYLES[style]
@@ -200,7 +300,7 @@ def upload_file():
     # 5. 生成图片
     result_filename = f"result_{timestamp}_{uuid.uuid4().hex[:8]}.jpg"
     result_path = os.path.join(app.config['RESULT_FOLDER'], result_filename)
-    result = generate_image(prompt, result_path)
+    result = generate_image(prompt, result_path, aspect_ratio)
     if not result:
         return jsonify({'error': 'AI生成失败，请重试'}), 500
 
@@ -283,4 +383,4 @@ def save_to_gallery():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000,debug=False)

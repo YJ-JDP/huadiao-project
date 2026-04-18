@@ -481,6 +481,37 @@
             visibility: visible;
         }
         
+        /* 比例选择器 */
+        .aspect-ratio-selector {
+            display: flex;
+            gap: 10px;
+            width: 100%;
+        }
+        
+        .aspect-ratio-btn {
+            flex: 1;
+            padding: 10px 12px;
+            background: linear-gradient(135deg, #f9f6f0 0%, #f0e6d8 100%);
+            border: 2px solid #c97e5a;
+            border-radius: 40px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #8a3c28;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .aspect-ratio-btn:hover {
+            background: linear-gradient(135deg, #f0e6d8 0%, #e6d2b8 100%);
+            box-shadow: 0 4px 12px rgba(201, 126, 90, 0.2);
+        }
+        
+        .aspect-ratio-btn.active {
+            background: linear-gradient(135deg, #c97e5a 0%, #8a3c28 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(201, 126, 90, 0.3);
+        }
+        
         .style-tooltip::before {
             content: '';
             position: absolute;
@@ -647,6 +678,28 @@
         
         .action-btn:active {
             transform: translateY(0);
+        }
+        
+        .action-btn.primary {
+            background: linear-gradient(135deg, #c97e5a 0%, #8a3c28 100%);
+            color: white;
+            border-color: #8a3c28;
+        }
+        
+        .action-btn.primary:hover {
+            background: linear-gradient(135deg, #b8714e 0%, #7a3424 100%);
+            box-shadow: 0 4px 12px rgba(201, 126, 90, 0.4);
+        }
+        
+        .action-btn.secondary {
+            background: #f9f6f0;
+            color: #8a3c28;
+            border-color: #ddd;
+        }
+        
+        .action-btn.secondary:hover {
+            background: #f0e6d8;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         
         /* 右侧边栏 */
@@ -1084,6 +1137,16 @@
                     </div>
                 </div>
                 
+                <!-- 比例选择 -->
+                <div class="style-section">
+                    <h3>选择图片比例</h3>
+                    <div class="aspect-ratio-selector">
+                        <button class="aspect-ratio-btn active" data-ratio="1024x1024">1:1 正方形</button>
+                        <button class="aspect-ratio-btn" data-ratio="1024x1536">2:3 竖版</button>
+                        <button class="aspect-ratio-btn" data-ratio="1536x1024">3:2 横版</button>
+                    </div>
+                </div>
+                
                 <!-- 生成按钮 -->
                 <button id="generateBtn" class="generate-btn">✨ 开始创作 ✨</button>
                 
@@ -1095,6 +1158,8 @@
                         <div class="result-actions">
                             <button id="downloadBtn" class="action-btn">📥 下载作品</button>
                             <button id="saveGalleryBtn" class="action-btn">🏛️ 保存到班级长廊</button>
+                            <button id="downloadAndSaveBtn" class="action-btn primary">✨ 一键下载并保存</button>
+                            <button id="cancelBtn" class="action-btn secondary">❌ 取消</button>
                         </div>
                     </div>
                 </div>
@@ -1229,17 +1294,21 @@
             messageDiv: document.getElementById('message'),
             downloadBtn: document.getElementById('downloadBtn'),
             saveGalleryBtn: document.getElementById('saveGalleryBtn'),
+            downloadAndSaveBtn: document.getElementById('downloadAndSaveBtn'),
+            cancelBtn: document.getElementById('cancelBtn'),
             imagePreview: document.getElementById('imagePreview'),
             stylePreviewImage: document.querySelector('.image-preview .preview-image'),
             previewCaption: document.querySelector('.preview-caption'),
             previewBtns: document.querySelectorAll('.preview-btn'),
             poetrySection: document.getElementById('poetrySection'),
             gallerySection: document.getElementById('gallerySection'),
-            model3dSection: document.getElementById('model3dSection')
+            model3dSection: document.getElementById('model3dSection'),
+            aspectRatioBtns: document.querySelectorAll('.aspect-ratio-btn')
         };
 
         let selectedFile = null;
         let selectedStyle = '和玺彩画';
+        let selectedAspectRatio = '1024x1024';
         let currentResultUrl = null;
         
         // 页面加载时恢复状态
@@ -1262,6 +1331,7 @@
         function saveState() {
             const state = {
                 selectedStyle: selectedStyle,
+                selectedAspectRatio: selectedAspectRatio,
                 currentResultUrl: currentResultUrl
                 // 注意：由于安全限制，无法直接保存File对象到localStorage
             };
@@ -1277,6 +1347,17 @@
                     if (state.selectedStyle) {
                         selectedStyle = state.selectedStyle;
                         elements.selectedStyleText.textContent = selectedStyle;
+                    }
+                    if (state.selectedAspectRatio) {
+                        selectedAspectRatio = state.selectedAspectRatio;
+                        // 更新按钮状态
+                        elements.aspectRatioBtns.forEach(btn => {
+                            if (btn.dataset.ratio === selectedAspectRatio) {
+                                btn.classList.add('active');
+                            } else {
+                                btn.classList.remove('active');
+                            }
+                        });
                     }
                     if (state.currentResultUrl) {
                         currentResultUrl = state.currentResultUrl;
@@ -1381,6 +1462,18 @@
                 elements.styleSelectorBtn.classList.remove('active');
             }
         });
+        
+        // 比例选择事件
+        elements.aspectRatioBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                selectedAspectRatio = btn.dataset.ratio;
+                // 更新按钮状态
+                elements.aspectRatioBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                // 保存状态
+                saveState();
+            });
+        });
 
         // 生成按钮
         elements.generateBtn.addEventListener('click', async () => {
@@ -1391,6 +1484,7 @@
             const formData = new FormData();
             formData.append('file', selectedFile);
             formData.append('style', selectedStyle);
+            formData.append('aspect_ratio', selectedAspectRatio);
 
             elements.loadingArea.style.display = 'block';
             elements.resultArea.style.display = 'none';
@@ -1456,6 +1550,53 @@
             if (confirm('确定要将作品保存到班级长廊吗？')) {
                 saveToGallery(author.trim());
             }
+        });
+        
+        // 一键下载并保存
+        elements.downloadAndSaveBtn.addEventListener('click', () => {
+            if (!currentResultUrl) {
+                showMessage('请先生成作品后再操作', true);
+                return;
+            }
+            
+            // 弹出输入作者名的对话框
+            const author = prompt('请输入作者姓名：');
+            if (!author || author.trim() === '') {
+                showMessage('请输入有效的作者姓名', true);
+                return;
+            }
+            
+            // 确认操作
+            if (confirm('确定要下载作品并保存到班级长廊吗？')) {
+                // 先下载
+                const a = document.createElement('a');
+                a.href = currentResultUrl;
+                a.download = `huadiao_${selectedStyle}.jpg`;
+                a.click();
+                
+                // 再保存到长廊
+                saveToGallery(author.trim());
+            }
+        });
+        
+        // 取消按钮
+        elements.cancelBtn.addEventListener('click', () => {
+            // 隐藏结果区域
+            elements.resultArea.style.display = 'none';
+            // 清除当前结果URL
+            currentResultUrl = null;
+            // 显示其他板块
+            if (elements.poetrySection) {
+                elements.poetrySection.style.display = 'block';
+            }
+            if (elements.gallerySection) {
+                elements.gallerySection.style.display = 'block';
+            }
+            if (elements.model3dSection) {
+                elements.model3dSection.style.display = 'block';
+            }
+            // 保存状态
+            saveState();
         });
         
         // 标记是否已经保存到长廊
